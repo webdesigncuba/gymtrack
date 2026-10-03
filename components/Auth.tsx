@@ -27,6 +27,7 @@ export default function Auth({ onSesion }: Props) {
   const [crear, setCrear] = useState(false);
   const [cuenta, setCuenta] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
   // Al montar, recuperamos la sesión guardada en el navegador.
@@ -64,13 +65,34 @@ export default function Auth({ onSesion }: Props) {
   async function enviar(evento: FormEvent<HTMLFormElement>): Promise<void> {
     evento.preventDefault();
     setError("");
+    setAviso("");
     setOcupado(true);
     try {
       const supabase = crearClienteSupabase();
-      const { error } =
-        crear === true
-          ? await supabase.auth.signUp({ email, password: clave })
-          : await supabase.auth.signInWithPassword({ email, password: clave });
+      if (crear === true) {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password: clave,
+        });
+        if (error) {
+          setError(error.message);
+          return;
+        }
+        // Sin sesión no hay entrada: el email debe confirmarse primero
+        // (si el proyecto no exige confirmación, la sesión ya viene creada).
+        if (!data.session) {
+          setCrear(false);
+          setClave("");
+          setAviso(
+            "Cuenta creada. Revisa tu email y confirma la cuenta antes de entrar."
+          );
+        }
+        return;
+      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password: clave,
+      });
       if (error) setError(error.message);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo conectar.");
@@ -128,6 +150,11 @@ export default function Auth({ onSesion }: Props) {
           />
         </div>
         {error && <p className={ERROR}>{error}</p>}
+        {aviso && (
+          <p className="m-0 rounded-[10px] border border-exito-borde bg-exito-fondo p-[10px_12px] text-[0.9rem] text-exito-texto">
+            {aviso}
+          </p>
+        )}
         <button type="submit" className={BOTON_PRINCIPAL} disabled={ocupado}>
           {ocupado ? "Un momento…" : crear ? "Crear cuenta" : "Entrar"}
         </button>
@@ -137,6 +164,7 @@ export default function Auth({ onSesion }: Props) {
           onClick={() => {
             setCrear(!crear);
             setError("");
+            setAviso("");
           }}
         >
           {crear ? "Ya tengo cuenta: entrar" : "No tengo cuenta: crear una"}
