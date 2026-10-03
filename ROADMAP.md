@@ -52,6 +52,7 @@ Pasada de seguridad del cierre: RLS "todo lo propio" en las 4 tablas, sin
 `service_role` en cliente (solo anónima), caché borrada al salir, sin XSS
 (sin `dangerouslySetInnerHTML`/`eval`), `npm audit` con 0 vulnerabilidades,
 `.env*.local` ignorado y `.env.example` sin secretos.
+- [x] Parche 1.13.1 (2026-10-03): al crear cuenta sin sesión (email por confirmar) se avisa "revisa tu email" en vez de entrar directo.
 
 ## Versión 2 — Pendiente de testeo
 Las propuestas que salgan del testeo se aparcan aquí (sin tocar código hasta
