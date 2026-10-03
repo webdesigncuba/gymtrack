@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/* Tokens propios para las utilidades (misma paleta que :root de abajo).
+   Así `bg-tarjeta`, `text-acento` o `font-display` usan nuestra identidad. */
+@theme {
+  --color-fondo: #131518;
+  --color-tarjeta: #1d2025;
+  --color-interior: #24282e;
+  --color-hondo: #0e1013;
+  --color-texto: #edeff2;
+  --color-suave: #a6adb7;
+  --color-borde: #30363d;
+  --color-acento: #f5a524;
+  --color-acento-texto: #1a1206;
+  --color-peligro: #f2555a;
+  --color-error-fondo: rgba(242, 85, 90, 0.12);
+  --color-error-borde: rgba(242, 85, 90, 0.4);
+  --color-error-texto: #ffb4b8;
+  --color-exito-fondo: rgba(46, 160, 67, 0.12);
+  --color-exito-borde: rgba(46, 160, 67, 0.4);
+  --color-exito-texto: #9ee6a8;
+  --font-display: "Oswald", system-ui, sans-serif;
+}
+
+/* Sistema visual: suelo de caucho + acero + tiza + ámbar.
+   Los componentes usan utilidades Tailwind; aquí solo quedan la base,
+   las dos animaciones de aparición y el oculto de las pestañas. */
+:root {
+  --color-fondo: #131518;
+  --color-tarjeta: #1d2025;
+  --color-interior: #24282e;
+  --color-hondo: #0e1013;
+  --color-texto: #edeff2;
+  --color-suave: #a6adb7;
+  --color-borde: #30363d;
+  --color-acento: #f5a524;
+  --color-acento-texto: #1a1206;
+  --color-peligro: #f2555a;
+  color-scheme: dark;
+}
+
+/* NOTA: estas variables duplican las de `@theme` (misma paleta) porque `body`
+   las sigue usando; no añadir aquí nada que ya cubra una utilidad. */
+
+body {
+  margin: 0;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+}
+
+/* Aparición del modal del cronómetro (Tailwind no aporta nada aquí). */
+.anim-modal {
+  animation: modal-entrada 0.2s ease-out;
+}
+
+@keyframes modal-entrada {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Aparición del aviso flotante. */
+.anim-toast {
+  animation: toast-entrada 0.2s ease-out;
+}
+
+@keyframes toast-entrada {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Por si algún estilo global pisa el oculto nativo de las pestañas */
+[hidden] {
+  display: none !important;
+}
+
+/* Movimiento reducido: sin animaciones de entrada */
+@media (prefers-reduced-motion: reduce) {
+  .anim-modal,
+  .anim-toast {
+    animation: none;
+  }
+}
