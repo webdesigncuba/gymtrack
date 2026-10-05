@@ -28,11 +28,12 @@ describe("limpiarCacheLocal", () => {
     expect(() => limpiarCacheLocal()).not.toThrow();
   });
 
-  it("borra sesiones, plantillas, comidas y perfil pero deja el resto", () => {
+  it("borra sesiones, plantillas, comidas, alimentos y perfil pero deja el resto", () => {
     const ctx = conLocalStorage({
       gymtrack_sesiones: "[]",
       gymtrack_plantillas: "[]",
       gymtrack_comidas: "[]",
+      gymtrack_alimentos_custom: "[]",
       gymtrack_perfil: "{}",
       otra_clave: "se queda",
     });
@@ -40,8 +41,9 @@ describe("limpiarCacheLocal", () => {
     expect(ctx.leer("gymtrack_sesiones")).toBeNull();
     expect(ctx.leer("gymtrack_plantillas")).toBeNull();
     expect(ctx.leer("gymtrack_comidas")).toBeNull();
+    expect(ctx.leer("gymtrack_alimentos_custom")).toBeNull();
     expect(ctx.leer("gymtrack_perfil")).toBeNull();
     expect(ctx.leer("otra_clave")).toBe("se queda");
-    expect(ctx.stub.removeItem).toHaveBeenCalledTimes(4);
+    expect(ctx.stub.removeItem).toHaveBeenCalledTimes(5);
   });
 });

@@ -2,12 +2,12 @@
 Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no
 aporte.
 ## Estado actual
-- v1.13.3 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta con héroe de kcal y perfil con calorías. Recuperación de clave en `Auth` + página `/actualizar-clave`.
+- v2.0.0 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta amplia con héroe de kcal y perfil con calorías. Recuperación de clave en `Auth` + página `/actualizar-clave`.
 - TypeScript estricto (`npx tsc --noEmit` limpio) + Tailwind v4 con tokens en `@theme`; en `globals.css` solo base, animaciones y `[hidden]`.
 - Solo una sesión por día (se edita sin borrar); cada ejercicio lleva sus tandas con reps + peso. Validación con error inline + toast (3,5 s).
 - Datos en localStorage (clave `gymtrack_sesiones`) vía interfaz `Almacen` async.
 - Cronómetro (60/90/120 s + personalizado): arranca al añadir cada tanda o al marcarla como hecha ("Hecha ✓ descansar"), modal bloqueante hasta "Entendido"; pitido + vibración.
-- Dieta completa (fase 6 cerrada en v1.10): tipos `Alimento`/`Comida`, base de 20 alimentos por 100 g ("pao"/"pão" → pan, cálculo por gramos), guardado local (`gymtrack_comidas`) + nube (tabla `comidas` RLS) + respaldo v2, pestaña "Dieta" con formulario (fallback manual), lista del día con totales y progreso de 7 días.
+- Dieta completa (fase 6 cerrada en v1.10, ampliada en v2.0): base de ~140 alimentos por 100 g con alias en español, "mis alimentos" reutilizables (clave `gymtrack_alimentos_custom` + tabla `alimentos_custom` RLS + respaldo v4) y búsqueda online bajo demanda en Open Food Facts (solo al pulsar, lo elegido queda en caché local). Guardado local + nube (tabla `comidas` RLS) + respaldo, pestaña "Dieta" con formulario, lista del día con totales y progreso de 7 días.
 - Perfil (fase 7 en v1.11–v1.13): `Perfil` con edad, estatura, peso, sexo, actividad y objetivo; pestaña "Perfil", tabla `perfiles` RLS (uno por cuenta) + respaldo v3. `lib/nutricion.ts` calcula lo necesario (Mifflin-St Jeor + actividad + ajuste; orientativo): vista en Perfil y héroe en Dieta (`BalanceCalorico`: anillo % + kcal en grande + C/P/G, con CTA al perfil si faltan datos). Lo antiguo sin sexo/actividad se normaliza a `null`.
 ## Decisiones (y por qué)
 - Next.js 16 + React 19 + TypeScript estricto + Tailwind v4: código simple para
@@ -35,7 +35,7 @@ aporte.
   formulario o desde cero): el respaldo de sesiones no las toca.
 - Diseño oscuro solo en `app/globals.css` (caucho+acero+tiza+ámbar); numerales en
   Oswald autohospedada, solo racha y cronómetro.
-- Tests con vitest sin jsdom (94 tests de todo `lib/`); los .test.ts viven junto al
+- Tests con vitest sin jsdom (100+ tests de todo `lib/`); los .test.ts viven junto al
   código con imports relativos (`vitest.config.ts` resuelve `@/`).
 ## Aprendizajes y errores a evitar
 - No usar `toISOString` / `getUTC*` / `Date.parse` con `YYYY-MM-DD` (se interpreta UTC).
@@ -44,4 +44,4 @@ aporte.
   estricto (dev) los efectos corren dos veces; comparar valor anterior vs actual.
 - Cada vez que implementes algo por el comando /feature te dejo a tu entender subir o no la version.
 ## Próximos pasos
-- v1 cerrada en 1.13.0 (solo parches 1.13.x de seguridad). Propuestas del testeo → versión 2 en `ROADMAP.md`.
+- v2 abierta en 2.0.0 (dieta amplia + online). Aparcado para 2.1.0: PWA offline real (service worker con caché).

@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Almacen } from "@/lib/almacen";
 import { esComida, type BackendComidas } from "@/lib/alimentos";
+import { esAlimento, type BackendAlimentos } from "@/lib/alimentosCustom";
 import { esPerfil, normalizarPerfil, type BackendPerfil } from "@/lib/perfil";
 import type { BackendPlantillas, Plantilla } from "@/lib/plantillas";
-import type { Comida, Perfil, Sesion } from "@/lib/tipos";
+import type { Alimento, Comida, Perfil, Sesion } from "@/lib/tipos";
 
 // Implementación de `Almacen` contra Supabase (una sesión por usuario y día).
 // Estrategia simple y predecible: guardar reemplaza todas las sesiones del
@@ -244,6 +245,73 @@ interface FilaPerfil {
   sexo: unknown;
   actividad: unknown;
   objetivo: unknown;
+}
+
+/** Fila de la tabla `alimentos_custom` tal como la devuelve Supabase. */
+interface FilaAlimentoCustom {
+  id: unknown;
+  nombre: unknown;
+  kcal: unknown;
+  carbos: unknown;
+  proteinas: unknown;
+  grasas: unknown;
+  alias: unknown;
+}
+
+/** Fuente de alimentos personalizados en la nube (una cuenta solo ve lo suyo). */
+export function backendNubeAlimentos(
+  supabase: SupabaseClient,
+  userId: string
+): BackendAlimentos {
+  return {
+    cargar: async () => {
+      const { data, error } = await supabase
+        .from("alimentos_custom")
+        .select("id, nombre, kcal, carbos, proteinas, grasas, alias")
+        .eq("user_id", userId);
+      if (error) {
+        console.warn("No se pudieron cargar los alimentos de la nube:", error);
+        return [];
+      }
+      const alimentos: Alimento[] = [];
+      for (const fila of (data ?? []) as FilaAlimentoCustom[]) {
+        const alimento: Alimento = {
+          nombre: typeof fila.nombre === "string" ? fila.nombre : "",
+          kcal: typeof fila.kcal === "number" ? fila.kcal : Number.NaN,
+          carbos: typeof fila.carbos === "number" ? fila.carbos : Number.NaN,
+          proteinas: typeof fila.proteinas === "number" ? fila.proteinas : Number.NaN,
+          grasas: typeof fila.grasas === "number" ? fila.grasas : Number.NaN,
+          ...(Array.isArray(fila.alias)
+            ? { alias: (fila.alias as unknown[]).filter((x): x is string => typeof x === "string") }
+            : {}),
+        };
+        if (esAlimento(alimento)) alimentos.push(alimento);
+      }
+      return alimentos;
+    },
+    guardar: async (alimentos: Alimento[]) => {
+      const borrado = await supabase.from("alimentos_custom").delete().eq("user_id", userId);
+      if (borrado.error) {
+        console.warn("No se pudieron guardar los alimentos en la nube:", borrado.error);
+        return;
+      }
+      if (alimentos.length === 0) return;
+      const filas = alimentos.map((a) => ({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7) + "-" + a.nombre.slice(0, 12),
+        user_id: userId,
+        nombre: a.nombre,
+        kcal: a.kcal,
+        carbos: a.carbos,
+        proteinas: a.proteinas,
+        grasas: a.grasas,
+        alias: a.alias ?? [],
+      }));
+      const insertado = await supabase.from("alimentos_custom").insert(filas);
+      if (insertado.error) {
+        console.warn("No se pudieron guardar los alimentos en la nube:", insertado.error);
+      }
+    },
+  };
 }
 
 /** Fuente de perfil en la nube para un usuario (uno por cuenta). */

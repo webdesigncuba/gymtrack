@@ -27,8 +27,13 @@ import {
   guardarPerfil,
   type BackendPerfil,
 } from "@/lib/perfil";
+import {
+  backendLocalAlimentos,
+  guardarAlimentosCustom,
+  type BackendAlimentos,
+} from "@/lib/alimentosCustom";
 import { almacenLocal, limpiarCacheLocal, type Almacen } from "@/lib/almacen";
-import { almacenNube, backendNubeComidas, backendNubePerfil, backendNubePlantillas } from "@/lib/almacenNube";
+import { almacenNube, backendNubeAlimentos, backendNubeComidas, backendNubePerfil, backendNubePlantillas } from "@/lib/almacenNube";
 import {
   backendLocalPlantillas,
   guardarPlantillas,
@@ -57,6 +62,8 @@ export default function Pagina() {
   const [senalDescanso, setSenalDescanso] = useState(0);
   // Señal para recargar plantillas cuando el respaldo restaura unas nuevas.
   const [senalPlantillas, setSenalPlantillas] = useState(0);
+  // Señal para recargar mis alimentos cuando el respaldo restaura unos nuevos.
+  const [senalAlimentos, setSenalAlimentos] = useState(0);
   // Usuario logueado (null = anónimo, todo en local).
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [cuentaEmail, setCuentaEmail] = useState<string | null>(null);
@@ -121,6 +128,22 @@ export default function Pagina() {
       };
     }
     return backendLocalPerfil;
+  }, [usuarioId]);
+
+  // Fuente de mis alimentos: con login escribe en la nube y deja copia local
+  // (espejo); sin login usa solo el local.
+  const backendAlimentos: BackendAlimentos = useMemo(() => {
+    if (usuarioId && haySupabase()) {
+      const nube = backendNubeAlimentos(crearClienteSupabase(), usuarioId);
+      return {
+        cargar: nube.cargar,
+        guardar: async (lista) => {
+          await nube.guardar(lista);
+          guardarAlimentosCustom(lista);
+        },
+      };
+    }
+    return backendLocalAlimentos;
   }, [usuarioId]);
 
   // 1) Al montar o cambiar de almacén, cargamos lo que haya guardado.
@@ -422,7 +445,11 @@ export default function Pagina() {
             );
           })()}
 
-          <FormularioDieta onGuardar={guardarComida} />
+          <FormularioDieta
+            onGuardar={guardarComida}
+            backendAlimentos={backendAlimentos}
+            senalAlimentos={senalAlimentos}
+          />
 
           <ListaComidas comidas={comidas} onEliminar={eliminarComida} />
 
@@ -478,6 +505,8 @@ export default function Pagina() {
         perfil={perfil}
         backendPerfil={backendPerfil}
         onImportarPerfil={importarPerfil}
+        backendAlimentos={backendAlimentos}
+        onImportarAlimentos={() => setSenalAlimentos((n) => n + 1)}
       />
       </div>
     </main>
