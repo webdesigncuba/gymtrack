@@ -2,11 +2,11 @@
 Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no
 aporte.
 ## Estado actual
-- v1.13.1 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta con héroe de kcal y perfil con calorías.
+- v1.13.3 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta con héroe de kcal y perfil con calorías. Recuperación de clave en `Auth` + página `/actualizar-clave`.
 - TypeScript estricto (`npx tsc --noEmit` limpio) + Tailwind v4 con tokens en `@theme`; en `globals.css` solo base, animaciones y `[hidden]`.
 - Solo una sesión por día (se edita sin borrar); cada ejercicio lleva sus tandas con reps + peso. Validación con error inline + toast (3,5 s).
 - Datos en localStorage (clave `gymtrack_sesiones`) vía interfaz `Almacen` async.
-- Cronómetro (60/90/120 s + personalizado): arranca al añadir cada tanda, modal bloqueante hasta "Entendido"; pitido + vibración.
+- Cronómetro (60/90/120 s + personalizado): arranca al añadir cada tanda o al marcarla como hecha ("Hecha ✓ descansar"), modal bloqueante hasta "Entendido"; pitido + vibración.
 - Dieta completa (fase 6 cerrada en v1.10): tipos `Alimento`/`Comida`, base de 20 alimentos por 100 g ("pao"/"pão" → pan, cálculo por gramos), guardado local (`gymtrack_comidas`) + nube (tabla `comidas` RLS) + respaldo v2, pestaña "Dieta" con formulario (fallback manual), lista del día con totales y progreso de 7 días.
 - Perfil (fase 7 en v1.11–v1.13): `Perfil` con edad, estatura, peso, sexo, actividad y objetivo; pestaña "Perfil", tabla `perfiles` RLS (uno por cuenta) + respaldo v3. `lib/nutricion.ts` calcula lo necesario (Mifflin-St Jeor + actividad + ajuste; orientativo): vista en Perfil y héroe en Dieta (`BalanceCalorico`: anillo % + kcal en grande + C/P/G, con CTA al perfil si faltan datos). Lo antiguo sin sexo/actividad se normaliza a `null`.
 ## Decisiones (y por qué)
@@ -27,6 +27,8 @@ aporte.
   dependencias; el modo 100% sin conexión queda como seguimiento opcional.
 - Base de datos solo vía Supabase opcional (nube si logueado, local si no);
   `service_role` prohibida en cliente.
+- Recuperación de clave con Supabase nativo (`resetPasswordForEmail` + `updateUser`
+  en `/actualizar-clave`): sin backend propio ni dependencias.
 - Diario por pestañas (Registrar/Sesiones/Dieta/Perfil/Progreso/Respaldo): los paneles se ocultan
   con `hidden`, no se desmontan, para no perder el formulario ni el cronómetro.
 - Plantillas con estructura sin valores en clave propia (creables desde el
