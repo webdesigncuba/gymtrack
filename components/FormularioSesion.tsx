@@ -260,6 +260,13 @@ export default function FormularioSesion({
     );
   }
 
+  // Marca una tanda como hecha: no cambia los datos, solo arranca
+  // el cronómetro de descanso. Sirve para las tandas que vienen
+  // de una plantilla, donde no se pulsa "+ Añadir tanda".
+  function marcarTandaHecha(): void {
+    onAñadirTanda?.();
+  }
+
   // El formulario está vacío si solo tiene una fila sin nombre.
   function formularioVacio(): boolean {
     return ejercicios.length === 1 && ejercicios[0].nombre.trim() === "";
@@ -673,6 +680,14 @@ export default function FormularioSesion({
                         ✕
                       </button>
                     </div>
+                    <button
+                      type="button"
+                      className={`${BOTON_SECUNDARIO_SM} mt-2 w-full`}
+                      onClick={marcarTandaHecha}
+                      aria-label={`Marcar tanda ${i + 1} del ejercicio ${indice + 1} como hecha y descansar`}
+                    >
+                      Hecha ✓ descansar
+                    </button>
                   </div>
                 ))}
               </div>

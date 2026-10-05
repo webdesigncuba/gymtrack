@@ -18,13 +18,15 @@ interface Props {
 }
 
 /**
- * Cuenta: entrar, crear cuenta o salir con email y contraseña.
+ * Cuenta: entrar, crear cuenta, salir o recuperar la clave con email.
  * Sin configuración de Supabase muestra un aviso y la app sigue en local.
  */
 export default function Auth({ onSesion }: Props) {
   const [email, setEmail] = useState("");
   const [clave, setClave] = useState("");
   const [crear, setCrear] = useState(false);
+  // Modo recuperación: solo pide el email y envía el enlace de Supabase.
+  const [recuperar, setRecuperar] = useState(false);
   const [cuenta, setCuenta] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
@@ -69,6 +71,19 @@ export default function Auth({ onSesion }: Props) {
     setOcupado(true);
     try {
       const supabase = crearClienteSupabase();
+      if (recuperar === true) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/actualizar-clave`,
+        });
+        if (error) {
+          setError(error.message);
+          return;
+        }
+        setAviso(
+          "Email enviado. Revisa tu correo y abre el enlace para poner una clave nueva."
+        );
+        return;
+      }
       if (crear === true) {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -136,19 +151,21 @@ export default function Auth({ onSesion }: Props) {
             className={CAMPO_ENTRADA}
           />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label className={ETIQUETA} htmlFor="auth-clave">Contraseña</label>
-          <input
-            id="auth-clave"
-            type="password"
-            required
-            minLength={6}
-            autoComplete={crear ? "new-password" : "current-password"}
-            value={clave}
-            onChange={(e) => setClave(e.target.value)}
-            className={CAMPO_ENTRADA}
-          />
-        </div>
+        {!recuperar && (
+          <div className="flex flex-col gap-1.5">
+            <label className={ETIQUETA} htmlFor="auth-clave">Contraseña</label>
+            <input
+              id="auth-clave"
+              type="password"
+              required
+              minLength={6}
+              autoComplete={crear ? "new-password" : "current-password"}
+              value={clave}
+              onChange={(e) => setClave(e.target.value)}
+              className={CAMPO_ENTRADA}
+            />
+          </div>
+        )}
         {error && <p className={ERROR}>{error}</p>}
         {aviso && (
           <p className="m-0 rounded-[10px] border border-exito-borde bg-exito-fondo p-[10px_12px] text-[0.9rem] text-exito-texto">
@@ -156,19 +173,55 @@ export default function Auth({ onSesion }: Props) {
           </p>
         )}
         <button type="submit" className={BOTON_PRINCIPAL} disabled={ocupado}>
-          {ocupado ? "Un momento…" : crear ? "Crear cuenta" : "Entrar"}
+          {ocupado
+            ? "Un momento…"
+            : recuperar
+              ? "Enviar enlace"
+              : crear
+                ? "Crear cuenta"
+                : "Entrar"}
         </button>
-        <button
-          type="button"
-          className="cursor-pointer self-start bg-transparent p-0 text-[0.85rem] font-semibold text-suave underline hover:text-acento"
-          onClick={() => {
-            setCrear(!crear);
-            setError("");
-            setAviso("");
-          }}
-        >
-          {crear ? "Ya tengo cuenta: entrar" : "No tengo cuenta: crear una"}
-        </button>
+        {recuperar ? (
+          <button
+            type="button"
+            className="cursor-pointer self-start bg-transparent p-0 text-[0.85rem] font-semibold text-suave underline hover:text-acento"
+            onClick={() => {
+              setRecuperar(false);
+              setError("");
+              setAviso("");
+            }}
+          >
+            Volver a entrar
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="cursor-pointer self-start bg-transparent p-0 text-[0.85rem] font-semibold text-suave underline hover:text-acento"
+              onClick={() => {
+                setCrear(!crear);
+                setError("");
+                setAviso("");
+              }}
+            >
+              {crear ? "Ya tengo cuenta: entrar" : "No tengo cuenta: crear una"}
+            </button>
+            {!crear && (
+              <button
+                type="button"
+                className="cursor-pointer self-start bg-transparent p-0 text-[0.85rem] font-semibold text-suave underline hover:text-acento"
+                onClick={() => {
+                  setRecuperar(true);
+                  setCrear(false);
+                  setError("");
+                  setAviso("");
+                }}
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            )}
+          </>
+        )}
       </form>
     </section>
   );
