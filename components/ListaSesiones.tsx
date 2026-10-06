@@ -3,6 +3,7 @@ import { recordsPorEjercicio } from "@/lib/estadisticas";
 import {
   BOTON_MINI,
   BOTON_PELIGRO_MINI,
+  PISTA,
   TARJETA,
   TITULO,
 } from "@/lib/estilos";
@@ -111,6 +112,13 @@ export default function ListaSesiones({ sesiones, onEliminar, onEditar, idEnEdic
                 {sesion.ejercicios.map((ejercicio, i) => (
                   <div key={`${sesion.id}-${i}`}>
                     <h4 className="mb-1.5 text-[0.95rem]">{ejercicio.nombre}</h4>
+                    {"observaciones" in ejercicio &&
+                      typeof ejercicio.observaciones === "string" &&
+                      ejercicio.observaciones.trim() !== "" && (
+                        <p className={`${PISTA} mb-1.5 italic`}>
+                          {ejercicio.observaciones}
+                        </p>
+                      )}
                     <ul className="m-0 flex list-none flex-col gap-1 p-0">
                       {tandasDe(ejercicio).map((tanda, j) => (
                         <li

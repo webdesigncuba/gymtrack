@@ -2,9 +2,9 @@
 Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no
 aporte.
 ## Estado actual
-- v1.13.3 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta con héroe de kcal y perfil con calorías. Recuperación de clave en `Auth` + página `/actualizar-clave`.
+- v1.13.4 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta con héroe de kcal y perfil con calorías. Recuperación de clave en `Auth` + página `/actualizar-clave`.
 - TypeScript estricto (`npx tsc --noEmit` limpio) + Tailwind v4 con tokens en `@theme`; en `globals.css` solo base, animaciones y `[hidden]`.
-- Solo una sesión por día (se edita sin borrar); cada ejercicio lleva sus tandas con reps + peso. Validación con error inline + toast (3,5 s).
+- Solo una sesión por día (se edita sin borrar); cada ejercicio lleva sus tandas con reps + peso y observaciones opcionales (variante del día). Validación con error inline + toast (3,5 s).
 - Datos en localStorage (clave `gymtrack_sesiones`) vía interfaz `Almacen` async.
 - Cronómetro (60/90/120 s + personalizado): arranca al añadir cada tanda o al marcarla como hecha ("Hecha ✓ descansar"), modal bloqueante hasta "Entendido"; pitido + vibración.
 - Dieta completa (fase 6 cerrada en v1.10): tipos `Alimento`/`Comida`, base de 20 alimentos por 100 g ("pao"/"pão" → pan, cálculo por gramos), guardado local (`gymtrack_comidas`) + nube (tabla `comidas` RLS) + respaldo v2, pestaña "Dieta" con formulario (fallback manual), lista del día con totales y progreso de 7 días.
@@ -35,7 +35,7 @@ aporte.
   formulario o desde cero): el respaldo de sesiones no las toca.
 - Diseño oscuro solo en `app/globals.css` (caucho+acero+tiza+ámbar); numerales en
   Oswald autohospedada, solo racha y cronómetro.
-- Tests con vitest sin jsdom (94 tests de todo `lib/`); los .test.ts viven junto al
+- Tests con vitest sin jsdom (95 tests de todo `lib/`); los .test.ts viven junto al
   código con imports relativos (`vitest.config.ts` resuelve `@/`).
 ## Aprendizajes y errores a evitar
 - No usar `toISOString` / `getUTC*` / `Date.parse` con `YYYY-MM-DD` (se interpreta UTC).
