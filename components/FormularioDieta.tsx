@@ -130,10 +130,16 @@ export default function FormularioDieta({
     setBuscando(true);
     setErrorOnline("");
     try {
-      setOnline(await buscarOnline(nombre.trim()));
+      const resultados = await buscarOnline(nombre.trim());
+      setOnline(resultados);
+      if (resultados.length === 0) {
+        setErrorOnline("Sin resultados online para ese nombre. Prueba con otro o mételo a mano.");
+      }
     } catch (error) {
       console.warn("La búsqueda online falló:", error);
-      setErrorOnline("No se pudo buscar online. Revisa tu conexión e inténtalo de nuevo.");
+      setErrorOnline(
+        error instanceof Error ? error.message : "No se pudo buscar online. Revisa tu conexión e inténtalo de nuevo."
+      );
     } finally {
       setBuscando(false);
     }

@@ -1,8 +1,10 @@
 import type { Alimento } from "@/lib/tipos";
 
-// Búsqueda online bajo demanda en Open Food Facts (gratis, sin clave).
-// Solo se llama al pulsar "Buscar online": sin conexión recurrente en
-// segundo plano. Lo elegido se guarda en "mis alimentos" y así queda en caché.
+// Búsqueda online bajo demanda vía proxy propio (`/api/buscar-alimentos`).
+// El navegador nunca llama directo a Open Food Facts (falla por CORS y OFF
+// exige User-Agent): el proxy server-side lo pide y reenvía los productos.
+// Solo se llama al pulsar "Buscar online". Lo elegido se guarda en
+// "mis alimentos" y así queda en caché.
 
 /** Un alimento traído de online, con su marca si la dice la API. */
 export interface AlimentoOnline extends Alimento {
@@ -51,8 +53,9 @@ export function mapearProducto(producto: ProductoOFF): AlimentoOnline | null {
 }
 
 /**
- * Busca alimentos por nombre en Open Food Facts. Devuelve hasta 10.
- * Falla con error si no hay red o la API responde mal.
+ * Busca alimentos por nombre vía el proxy propio (mismo origen, sin CORS).
+ * Devuelve hasta 10. Falla con error si no hay red o la API responde mal.
+ * Si no se pasa señal, se aborta a los 15 s.
  */
 export async function buscarOnline(
   texto: string,
@@ -60,12 +63,36 @@ export async function buscarOnline(
 ): Promise<AlimentoOnline[]> {
   const buscado = texto.trim();
   if (!buscado) return [];
-  const url =
-    "https://world.openfoodfacts.org/cgi/search.pl?search_terms=" +
-    encodeURIComponent(buscado) +
-    "&search_simple=1&action=process&json=1&page_size=10";
-  const respuesta = await fetch(url, { signal: senal });
-  if (!respuesta.ok) throw new Error("La búsqueda online falló.");
+  const url = "/api/buscar-alimentos?q=" + encodeURIComponent(buscado);
+  const propio = senal ? null : new AbortController();
+  const cuentaAtras = propio ? setTimeout(() => propio.abort(), 15000) : null;
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(url, { signal: senal ?? propio!.signal });
+  } catch (error) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      throw new Error("Sin conexión: conecta a internet para buscar online.");
+    }
+    throw new Error("No se pudo contactar con el buscador online.");
+  } finally {
+    if (cuentaAtras) clearTimeout(cuentaAtras);
+  }
+  if (!respuesta.ok) {
+    // El proxy reenvía el motivo (saturado, inalcanzable...) en { error }.
+    try {
+      const cuerpo: unknown = await respuesta.json();
+      const motivo =
+        typeof cuerpo === "object" && cuerpo !== null
+          ? (cuerpo as { error?: unknown }).error
+          : null;
+      if (typeof motivo === "string" && motivo.trim() !== "") {
+        throw new Error(`${motivo} Inténtalo más tarde o mete el alimento a mano.`);
+      }
+    } catch (error) {
+      if (error instanceof Error) throw error;
+    }
+    throw new Error("El buscador online falló. Inténtalo más tarde o mete el alimento a mano.");
+  }
   const datos: unknown = await respuesta.json();
   const productos =
     typeof datos === "object" && datos !== null && Array.isArray((datos as { products?: unknown }).products)
