@@ -80,6 +80,14 @@ describe("esSesion", () => {
     expect(esSesion({ id: "x" })).toBe(false);
     expect(esSesion({ ...sesion("2026-10-01"), ejercicios: "no-array" })).toBe(false);
   });
+
+  it("acepta ejercicios con observaciones opcionales", () => {
+    const conObs = sesion("2026-10-01");
+    conObs.ejercicios = [
+      { nombre: "Press", observaciones: "Agarre estrecho", tandas: [{ reps: "10", peso: "60" }] },
+    ];
+    expect(esSesion(conObs)).toBe(true);
+  });
 });
 
 describe("ordenarSesiones", () => {

@@ -37,6 +37,7 @@ interface TandaEditable {
 interface EjercicioEditable {
   id: string;
   nombre: string;
+  observaciones: string;
   tandas: TandaEditable[];
 }
 
@@ -81,6 +82,7 @@ function ejercicioVacio(): EjercicioEditable {
   return {
     id: Math.random().toString(36).slice(2),
     nombre: "",
+    observaciones: "",
     tandas: [tandaVacia()],
   };
 }
@@ -88,6 +90,7 @@ function ejercicioVacio(): EjercicioEditable {
 // Convierte un ejercicio guardado en fila editable.
 // Acepta el formato nuevo (tandas: [{reps, peso}]) y el formato
 // antiguo (tandas: "3", repeticiones: "10", peso: "60").
+// Las observaciones son opcionales: lo antiguo no las trae.
 function aFilaEditable(ejercicio: Ejercicio | EjercicioAntiguo): EjercicioEditable {
   // Formato nuevo: tandas ya es un array.
   if (
@@ -98,6 +101,10 @@ function aFilaEditable(ejercicio: Ejercicio | EjercicioAntiguo): EjercicioEditab
     return {
       id: Math.random().toString(36).slice(2),
       nombre: ejercicio.nombre ?? "",
+      observaciones:
+        "observaciones" in ejercicio && typeof ejercicio.observaciones === "string"
+          ? ejercicio.observaciones
+          : "",
       tandas: ejercicio.tandas.map((t) => ({
         id: Math.random().toString(36).slice(2),
         reps: t.reps ?? "",
@@ -115,6 +122,7 @@ function aFilaEditable(ejercicio: Ejercicio | EjercicioAntiguo): EjercicioEditab
   return {
     id: Math.random().toString(36).slice(2),
     nombre: ejercicio.nombre ?? "",
+    observaciones: "",
     tandas: Array.from({ length: cuantas }, () => ({
       id: Math.random().toString(36).slice(2),
       reps: repeticiones,
@@ -204,6 +212,12 @@ export default function FormularioSesion({
     );
   }
 
+  function cambiarObservaciones(id: string, valor: string): void {
+    setEjercicios((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, observaciones: valor } : e))
+    );
+  }
+
   function cambiarTanda(
     ejercicioId: string,
     tandaId: string,
@@ -273,10 +287,12 @@ export default function FormularioSesion({
   }
 
   // Expande una plantilla en filas editables con sus tandas vacías.
+  // Las plantillas no guardan observaciones (son del día): empiezan vacías.
   function expandirPlantilla(plantilla: Plantilla): EjercicioEditable[] {
     return plantilla.ejercicios.map((e) => ({
       id: Math.random().toString(36).slice(2),
       nombre: e.nombre,
+      observaciones: "",
       tandas: Array.from({ length: Math.max(1, e.tandas) }, () => tandaVacia()),
     }));
   }
@@ -450,6 +466,10 @@ export default function FormularioSesion({
       creadaEn: sesionEnEdicion !== null ? sesionEnEdicion.creadaEn : Date.now(),
       ejercicios: completos.map((e) => ({
         nombre: e.nombre.trim(),
+        // La observación es opcional: vacía no se guarda.
+        ...(e.observaciones.trim() !== ""
+          ? { observaciones: e.observaciones.trim() }
+          : {}),
         // Guardamos solo las tandas con algún dato; si están todas
         // vacías, guardamos una vacía para mostrar "—".
         tandas: (() => {
@@ -633,6 +653,18 @@ export default function FormularioSesion({
                   className={CAMPO_ENTRADA}
                 />
                 {historialDe(ejercicio.nombre)}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className={ETIQUETA} htmlFor={`obs-${ejercicio.id}`}>Observaciones (opcional)</label>
+                <input
+                  id={`obs-${ejercicio.id}`}
+                  type="text"
+                  placeholder="Agarre estrecho, con banda…"
+                  value={ejercicio.observaciones}
+                  onChange={(e) => cambiarObservaciones(ejercicio.id, e.target.value)}
+                  className={CAMPO_ENTRADA}
+                />
               </div>
 
               <div className="flex flex-col gap-2.5">

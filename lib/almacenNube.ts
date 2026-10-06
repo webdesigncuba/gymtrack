@@ -36,12 +36,16 @@ function aSesion(fila: FilaSesion): Sesion | null {
   const creadaEn = typeof fila.creada_en === "number" ? fila.creada_en : Date.now();
   const ejercicios = fila.ejercicios
     .filter(
-      (e): e is { nombre: unknown; tandas: unknown } =>
+      (e): e is { nombre: unknown; tandas: unknown; observaciones?: unknown } =>
         typeof e === "object" && e !== null
     )
     .filter((e) => typeof e.nombre === "string" && Array.isArray(e.tandas))
     .map((e) => ({
       nombre: e.nombre as string,
+      // La observación es opcional y vive en el jsonb: la pasamos si viene.
+      ...(typeof e.observaciones === "string" && e.observaciones.trim() !== ""
+        ? { observaciones: e.observaciones }
+        : {}),
       tandas: (e.tandas as unknown[]).map(aTanda),
     }));
   return { id: fila.id, fecha: fila.fecha, creadaEn, ejercicios };

@@ -11,6 +11,9 @@ export interface Tanda {
 export interface Ejercicio {
   nombre: string;
   tandas: Tanda[];
+  /** Variante del día en texto libre ("agarre estrecho"). Opcional para no
+   * romper las sesiones ya guardadas (ausente = sin observaciones). */
+  observaciones?: string;
 }
 
 /** Una sesión de entrenamiento de un día. */
