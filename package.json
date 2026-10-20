@@ -1,6 +1,6 @@
 {
   "name": "gymtrack",
-  "version": "1.13.4",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

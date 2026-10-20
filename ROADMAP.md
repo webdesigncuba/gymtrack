@@ -54,8 +54,9 @@ Pasada de seguridad del cierre: RLS "todo lo propio" en las 4 tablas, sin
 `.env*.local` ignorado y `.env.example` sin secretos.
 - [x] Parche 1.13.1 (2026-10-03): al crear cuenta sin sesión (email por confirmar) se avisa "revisa tu email" en vez de entrar directo.
 
-## Versión 2 — Pendiente de testeo
-Las propuestas que salgan del testeo se aparcan aquí (sin tocar código hasta
-abrir la v2 en `2.0.0`).
-- [ ] (hueco para la primera propuesta del testeo)
+## Versión 2 — Abierta en 2.0.0 (2026-10-05)
+- [x] Dieta amplia + online (2026-10-05): base de ~140 alimentos con alias, "mis alimentos" reutilizables (clave `gymtrack_alimentos_custom` + tabla `alimentos_custom` RLS + respaldo v4) y búsqueda online bajo demanda en Open Food Facts (lo elegido queda en caché, aviso de privacidad, fallback offline).
+
+## Versión 2.1 — Pendiente
+- [ ] PWA offline real: service worker propio (sin dependencias) con caché del shell + fallback sin conexión.
 

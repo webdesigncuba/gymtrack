@@ -6,13 +6,17 @@ import {
   backendLocalComidas,
   type BackendComidas,
 } from "@/lib/alimentos";
+import {
+  backendLocalAlimentos,
+  type BackendAlimentos,
+} from "@/lib/alimentosCustom";
 import { backendLocalPerfil, type BackendPerfil } from "@/lib/perfil";
 import {
   backendLocalPlantillas,
   type BackendPlantillas,
 } from "@/lib/plantillas";
 import { construirRespaldo, leerRespaldo } from "@/lib/respaldo";
-import type { Comida, Perfil, Sesion } from "@/lib/tipos";
+import type { Alimento, Comida, Perfil, Sesion } from "@/lib/tipos";
 
 interface Props {
   sesiones: Sesion[];
@@ -26,13 +30,15 @@ interface Props {
   perfil?: Perfil | null;
   backendPerfil?: BackendPerfil;
   onImportarPerfil?: (perfil: Perfil | null) => void;
+  backendAlimentos?: BackendAlimentos;
+  onImportarAlimentos?: () => void;
 }
 
 /**
- * Respaldo en un solo JSON versionado: { version: 3, sesiones, plantillas, comidas, perfil }.
- * - Descargar: guarda sesiones, plantillas, comidas y perfil en un archivo.
+ * Respaldo en un solo JSON versionado: { version: 4, sesiones, plantillas, comidas, perfil, alimentosCustom }.
+ * - Descargar: guarda sesiones, plantillas, comidas, perfil y mis alimentos en un archivo.
  * - Restaurar: valida cada clave por separado y reemplaza (con confirmación).
- * Los respaldos v2/v1 (sin perfil) se leen igual: solo no tocan el perfil.
+ * Los respaldos v3/v2/v1 (sin alimentos) se leen igual: solo no tocan mis alimentos.
  */
 export default function Respaldo({
   sesiones,
@@ -46,6 +52,8 @@ export default function Respaldo({
   perfil = null,
   backendPerfil = backendLocalPerfil,
   onImportarPerfil = () => {},
+  backendAlimentos = backendLocalAlimentos,
+  onImportarAlimentos = () => {},
 }: Props) {
   const [mensaje, setMensaje] = useState("");
   const [esError, setEsError] = useState(false);
@@ -77,12 +85,16 @@ export default function Respaldo({
     });
     // Si el diario ya trae el perfil en memoria, ese manda.
     const perfilTotal = perfil ?? perfilGuardado;
-    if (sesiones.length === 0 && plantillas.length === 0 && comidasTotales.length === 0 && perfilTotal === null) {
-      avisar("No hay sesiones, plantillas, comidas ni perfil para respaldar.", true);
+    const alimentosGuardados = await backendAlimentos.cargar().catch((error) => {
+      console.warn("No se pudieron leer los alimentos personalizados:", error);
+      return [];
+    });
+    if (sesiones.length === 0 && plantillas.length === 0 && comidasTotales.length === 0 && perfilTotal === null && alimentosGuardados.length === 0) {
+      avisar("No hay sesiones, plantillas, comidas, perfil ni alimentos para respaldar.", true);
       return;
     }
     const contenido = JSON.stringify(
-      construirRespaldo(sesiones, plantillas, usuarioEmail, comidasTotales, perfilTotal),
+      construirRespaldo(sesiones, plantillas, usuarioEmail, comidasTotales, perfilTotal, alimentosGuardados),
       null,
       2
     );
@@ -94,7 +106,7 @@ export default function Respaldo({
     enlace.click();
     URL.revokeObjectURL(url);
     avisar(
-      `Respaldo descargado con ${resumir(sesiones.length, "sesión", "sesiones")}, ${resumir(plantillas.length, "plantilla", "plantillas")}, ${resumir(comidasTotales.length, "comida", "comidas")}${perfilTotal ? " y perfil" : ""}.`,
+      `Respaldo descargado con ${resumir(sesiones.length, "sesión", "sesiones")}, ${resumir(plantillas.length, "plantilla", "plantillas")}, ${resumir(comidasTotales.length, "comida", "comidas")}${perfilTotal ? ", perfil" : ""}${alimentosGuardados.length > 0 ? ` y ${resumir(alimentosGuardados.length, "alimento", "alimentos")}` : ""}.`,
       false
     );
   }
@@ -135,6 +147,9 @@ export default function Respaldo({
     if (leido.conPerfil) {
       partes.push("perfil");
     }
+    if (leido.conAlimentos) {
+      partes.push(resumir(leido.alimentosCustom.length, "alimento", "alimentos"));
+    }
     const descartes: string[] = [];
     if (leido.descartadasSesiones > 0) {
       descartes.push(`${leido.descartadasSesiones} sesiones descartadas por formato inválido`);
@@ -144,6 +159,9 @@ export default function Respaldo({
     }
     if (leido.descartadasComidas > 0) {
       descartes.push(`${leido.descartadasComidas} comidas descartadas por formato inválido`);
+    }
+    if (leido.descartadosAlimentos > 0) {
+      descartes.push(`${leido.descartadosAlimentos} alimentos descartados por formato inválido`);
     }
     const extra = descartes.length > 0 ? ` (${descartes.join(", ")})` : "";
     if (!window.confirm(`¿Reemplazar lo actual por ${partes.join(", ")} del respaldo?${extra}`)) return;
@@ -168,6 +186,12 @@ export default function Respaldo({
         });
       }
       onImportarPerfil(perfilLeido);
+    }
+    if (leido.conAlimentos) {
+      await backendAlimentos.guardar(leido.alimentosCustom).catch((error) => {
+        console.warn("No se pudieron restaurar los alimentos:", error);
+      });
+      onImportarAlimentos();
     }
     avisar(`Respaldo restaurado con ${partes.join(", ")}.${extra}`, false);
   }
