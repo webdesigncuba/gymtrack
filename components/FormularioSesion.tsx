@@ -468,7 +468,11 @@ export default function FormularioSesion({
       setEjercicios([ejercicioVacio()]);
     }
     setError("");
-    setToast("");
+    // Confirmación visible: la validación ha ido bien y la página ha
+    // recibido la sesión (si el guardado falla, la página avisa aparte).
+    mostrarToast(
+      sesionEnEdicion !== null ? "Cambios guardados ✅" : "Sesión guardada ✅"
+    );
   }
 
   const plantillaSeleccionada = plantillas.find((p) => p.id === plantillaId);

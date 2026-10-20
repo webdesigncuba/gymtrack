@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import FormularioSesion from "@/components/FormularioSesion";
 import BalanceCalorico from "@/components/BalanceCalorico";
@@ -73,6 +73,23 @@ export default function Pagina() {
   // Perfil del usuario (uno por cuenta, para uso posterior).
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [cargandoPerfil, setCargandoPerfil] = useState(true);
+  // Aviso flotante (toast) cuando falla el guardado de sesiones.
+  const [avisoGuardado, setAvisoGuardado] = useState("");
+  const avisoTemporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function mostrarAvisoGuardado(mensaje: string): void {
+    setAvisoGuardado(mensaje);
+    // Si ya había un aviso visible, reiniciamos su temporizador.
+    if (avisoTemporizador.current) clearTimeout(avisoTemporizador.current);
+    avisoTemporizador.current = setTimeout(() => setAvisoGuardado(""), 3500);
+  }
+
+  // Limpiamos el temporizador si la página desaparece.
+  useEffect(() => {
+    return () => {
+      if (avisoTemporizador.current) clearTimeout(avisoTemporizador.current);
+    };
+  }, []);
 
   // Almacén activo: nube si hay sesión, local si no.
   const almacen: Almacen = useMemo(() => {
@@ -178,6 +195,9 @@ export default function Pagina() {
       })
       .catch((error) => {
         console.warn("No se pudieron guardar las sesiones:", error);
+        mostrarAvisoGuardado(
+          "⚠️ No se pudieron guardar las sesiones. Comprueba tu conexión e inténtalo de nuevo."
+        );
       });
   }, [sesiones, cargando, almacen, usuarioId]);
   // Comidas: se cargan al cambiar de backend y se guardan en cada cambio
@@ -509,6 +529,16 @@ export default function Pagina() {
         onImportarAlimentos={() => setSenalAlimentos((n) => n + 1)}
       />
       </div>
+
+      {avisoGuardado && (
+        <div
+          className="fixed bottom-6 left-1/2 z-50 w-[min(92vw,480px)] -translate-x-1/2 rounded-xl border border-borde bg-black px-4 py-3 text-[0.9rem] font-semibold text-texto shadow-[0_10px_30px_rgba(0,0,0,0.5)] anim-toast"
+          role="alert"
+          aria-live="assertive"
+        >
+          {avisoGuardado}
+        </div>
+      )}
     </main>
   );
 }

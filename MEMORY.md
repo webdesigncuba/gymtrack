@@ -2,9 +2,9 @@
 Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no
 aporte.
 ## Estado actual
-- v2.0.0 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta amplia con héroe de kcal y perfil con calorías. Recuperación de clave en `Auth` + página `/actualizar-clave`.
+- v2.1.0 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta amplia con héroe de kcal y perfil con calorías. Recuperación de clave en `Auth` + página `/actualizar-clave`.
 - TypeScript estricto (`npx tsc --noEmit` limpio) + Tailwind v4 con tokens en `@theme`; en `globals.css` solo base, animaciones y `[hidden]`.
-- Solo una sesión por día (se edita sin borrar); cada ejercicio lleva sus tandas con reps + peso. Validación con error inline + toast (3,5 s).
+- Solo una sesión por día (se edita sin borrar); cada ejercicio lleva sus tandas con reps + peso. Validación con error inline + toast (3,5 s); al guardar bien, toast de éxito en el formulario ("Sesión guardada ✅" / "Cambios guardados ✅") y si falla el guardado real (nube/local) la página muestra un toast de error visible en cualquier pestaña.
 - Datos en localStorage (clave `gymtrack_sesiones`) vía interfaz `Almacen` async.
 - Cronómetro (60/90/120 s + personalizado): arranca al añadir cada tanda o al marcarla como hecha ("Hecha ✓ descansar"), modal bloqueante hasta "Entendido"; pitido + vibración.
 - Dieta completa (fase 6 cerrada en v1.10, ampliada en v2.0): base de ~140 alimentos por 100 g con alias en español, "mis alimentos" reutilizables (clave `gymtrack_alimentos_custom` + tabla `alimentos_custom` RLS + respaldo v4) y búsqueda online bajo demanda en Open Food Facts (solo al pulsar, lo elegido queda en caché local). Guardado local + nube (tabla `comidas` RLS) + respaldo, pestaña "Dieta" con formulario, lista del día con totales y progreso de 7 días.
@@ -44,4 +44,4 @@ aporte.
   estricto (dev) los efectos corren dos veces; comparar valor anterior vs actual.
 - Cada vez que implementes algo por el comando /feature te dejo a tu entender subir o no la version.
 ## Próximos pasos
-- v2 abierta en 2.0.0 (dieta amplia + online). Aparcado para 2.1.0: PWA offline real (service worker con caché).
+- v2 abierta en 2.0.0 (dieta amplia + online). Aparcado para 2.2.0: PWA offline real (service worker con caché).
