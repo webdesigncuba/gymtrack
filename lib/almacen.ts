@@ -1,5 +1,6 @@
 import { cargarSesiones, guardarSesiones, olvidarSesiones } from "@/lib/datos";
 import { olvidarComidas } from "@/lib/alimentos";
+import { olvidarAlimentosCustom } from "@/lib/alimentosCustom";
 import { olvidarPerfil } from "@/lib/perfil";
 import { olvidarPlantillas } from "@/lib/plantillas";
 import type { Sesion } from "@/lib/tipos";
@@ -24,12 +25,13 @@ export const almacenLocal: Almacen = {
 };
 
 /**
- * Borra la caché local (sesiones, plantillas, comidas y perfil). Se llama al
+ * Borra la caché local (sesiones, plantillas, comidas, alimentos y perfil). Se llama al
  * cerrar sesión para no dejar los datos del usuario en el navegador.
  */
 export function limpiarCacheLocal(): void {
   olvidarSesiones();
   olvidarPlantillas();
   olvidarComidas();
+  olvidarAlimentosCustom();
   olvidarPerfil();
 }
