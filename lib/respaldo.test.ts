@@ -54,12 +54,15 @@ describe("construirRespaldo / leerRespaldo", () => {
       plantillas: [plantilla()],
       comidas: [comida],
       perfil,
+      alimentosCustom: [],
       conPlantillas: true,
       conComidas: true,
       conPerfil: true,
+      conAlimentos: true,
       descartadasSesiones: 0,
       descartadasPlantillas: 0,
       descartadasComidas: 0,
+      descartadosAlimentos: 0,
     });
   });
 
@@ -96,6 +99,39 @@ describe("construirRespaldo / leerRespaldo", () => {
     expect(leido?.conComidas).toBe(true);
     expect(leido?.perfil).toBeNull();
     expect(leido?.conPerfil).toBe(false);
+    expect(leido?.alimentosCustom).toEqual([]);
+    expect(leido?.conAlimentos).toBe(false);
+  });
+
+  it("acepta la v3 (sin alimentos) sin tocar mis alimentos", () => {
+    const comida = crearComida("2026-10-01", buscarAlimento("pan")!, 50);
+    const leido = leerRespaldo({
+      version: 3,
+      sesiones: [sesion("2026-10-01")],
+      plantillas: [plantilla()],
+      comidas: [comida],
+      perfil: null,
+    });
+    expect(leido?.sesiones).toHaveLength(1);
+    expect(leido?.alimentosCustom).toEqual([]);
+    expect(leido?.conAlimentos).toBe(false);
+  });
+
+  it("lee los alimentos personalizados de la v4", () => {
+    const leido = leerRespaldo({
+      version: 4,
+      sesiones: [sesion("2026-10-01")],
+      plantillas: [],
+      comidas: [],
+      perfil: null,
+      alimentosCustom: [
+        { nombre: "Pan de pueblo", kcal: 260, carbos: 50, proteinas: 8, grasas: 3 },
+        { nombre: "", kcal: 1, carbos: 1, proteinas: 1, grasas: 1 },
+      ],
+    });
+    expect(leido?.alimentosCustom).toHaveLength(1);
+    expect(leido?.conAlimentos).toBe(true);
+    expect(leido?.descartadosAlimentos).toBe(1);
   });
 
   it("un perfil inválido no bloquea el resto", () => {
@@ -131,6 +167,9 @@ describe("construirRespaldo / leerRespaldo", () => {
     expect(leerRespaldo({ version: 1, sesiones: [], plantillas: [] })).toBeNull();
     expect(leerRespaldo({ version: 2, sesiones: [], plantillas: [], comidas: [] })).toBeNull();
     expect(leerRespaldo({ version: 3, sesiones: [], plantillas: [], comidas: [], perfil: null })).toBeNull();
+    expect(
+      leerRespaldo({ version: 4, sesiones: [], plantillas: [], comidas: [], perfil: null, alimentosCustom: [] })
+    ).toBeNull();
     expect(
       leerRespaldo({ version: VERSION_RESPALDO + 1, sesiones: [], plantillas: [] })
     ).toBeNull();

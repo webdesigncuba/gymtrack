@@ -14,6 +14,14 @@ interface RespuestaUno {
   error: { message: string } | null;
 }
 
+interface Llamada {
+  tabla: string;
+  operacion: string;
+  filas?: unknown;
+  /** Filtro `.not(...)` aplicado al borrado, si lo hubo. */
+  not?: string | null;
+}
+
 // Crea un mock mínimo con respuestas configurables por operación.
 function mockSupabase(respuestas: {
   select?: Respuesta;
@@ -22,7 +30,7 @@ function mockSupabase(respuestas: {
   insertado?: { error: { message: string } | null };
   actualizado?: { error: { message: string } | null };
 }) {
-  const llamadas: { tabla: string; operacion: string; filas?: unknown }[] = [];
+  const llamadas: Llamada[] = [];
   const cliente = {
     from: (tabla: string) => ({
       select: (..._args: unknown[]) => ({
@@ -39,12 +47,22 @@ function mockSupabase(respuestas: {
           });
         },
       }),
-      delete: () => ({
-        eq: async (..._filtro: unknown[]) => {
-          llamadas.push({ tabla, operacion: "delete" });
+      // El borrador real encadena `.not(...)` (si hay) y luego `.eq(...)`;
+      // el mock registra ambos en una sola llamada.
+      delete: () => {
+        let filtroNot: string | null = null;
+        const eq = async (..._filtro: unknown[]) => {
+          llamadas.push({ tabla, operacion: "delete", not: filtroNot });
           return respuestas.borrado ?? { error: null };
-        },
-      }),
+        };
+        return {
+          eq,
+          not: (_col: unknown, _op: unknown, valor: unknown) => {
+            filtroNot = String(valor);
+            return { eq };
+          },
+        };
+      },
       insert: async (filas: unknown) => {
         llamadas.push({ tabla, operacion: "insert", filas });
         return respuestas.insertado ?? { error: null };
@@ -94,16 +112,16 @@ describe("backendNubePlantillas", () => {
     expect(await backendNubePlantillas(cliente, "u1").cargar()).toEqual([]);
   });
 
-  it("guardar borra lo anterior e inserta con user_id", async () => {
+  it("guardar sube lo nuevo primero y luego borra lo que sobra", async () => {
     const { cliente, llamadas } = mockSupabase({});
     const backend = backendNubePlantillas(cliente, "u9");
     await backend.guardar([
       { id: "p1", nombre: "Pierna", creadaEn: 1, ejercicios: [] },
     ]);
     const operaciones = llamadas.map((l) => `${l.tabla}:${l.operacion}`);
-    expect(operaciones).toEqual(["plantillas:delete", "plantillas:insert"]);
-    const insercion = llamadas.find((l) => l.operacion === "insert");
-    expect(insercion?.filas).toEqual([
+    expect(operaciones).toEqual(["plantillas:upsert", "plantillas:delete"]);
+    const subida = llamadas.find((l) => l.operacion === "upsert");
+    expect(subida?.filas).toEqual([
       {
         id: "p1",
         user_id: "u9",
@@ -112,6 +130,29 @@ describe("backendNubePlantillas", () => {
         ejercicios: [],
       },
     ]);
+    // Lo que sobra se borra por diferencia de ids (nunca todas a ciegas).
+    const borrado = llamadas.find((l) => l.operacion === "delete");
+    expect(borrado?.not).toBe('("p1")');
+  });
+
+  it("si falla el subido no se borra nada (no pierde datos)", async () => {
+    const { cliente, llamadas } = mockSupabase({
+      actualizado: { error: { message: "caído" } },
+    });
+    await backendNubePlantillas(cliente, "u9").guardar([
+      { id: "p1", nombre: "Pierna", creadaEn: 1, ejercicios: [] },
+    ]);
+    expect(llamadas.map((l) => l.operacion)).toEqual(["upsert"]);
+  });
+
+  it("con lista vacía solo se borra lo de la cuenta", async () => {
+    const { cliente, llamadas } = mockSupabase({});
+    await backendNubePlantillas(cliente, "u9").guardar([]);
+    const borrado = llamadas.find((l) => l.operacion === "delete");
+    expect(llamadas.map((l) => `${l.tabla}:${l.operacion}`)).toEqual([
+      "plantillas:delete",
+    ]);
+    expect(borrado?.not).toBeNull();
   });
 });
 
@@ -147,14 +188,14 @@ describe("backendNubeComidas", () => {
     expect(await backendNubeComidas(cliente, "u1").cargar()).toEqual([]);
   });
 
-  it("guardar borra lo anterior e inserta con user_id", async () => {
+  it("guardar sube lo nuevo primero y luego borra lo que sobra", async () => {
     const { cliente, llamadas } = mockSupabase({});
     const comida = crearComida("2026-10-03", buscarAlimento("pan")!, 50);
     await backendNubeComidas(cliente, "u9").guardar([comida]);
     const operaciones = llamadas.map((l) => `${l.tabla}:${l.operacion}`);
-    expect(operaciones).toEqual(["comidas:delete", "comidas:insert"]);
-    const insercion = llamadas.find((l) => l.operacion === "insert");
-    expect(insercion?.filas).toEqual([
+    expect(operaciones).toEqual(["comidas:upsert", "comidas:delete"]);
+    const subida = llamadas.find((l) => l.operacion === "upsert");
+    expect(subida?.filas).toEqual([
       {
         id: comida.id,
         user_id: "u9",
@@ -168,6 +209,17 @@ describe("backendNubeComidas", () => {
         creada_en: comida.creadaEn,
       },
     ]);
+    const borrado = llamadas.find((l) => l.operacion === "delete");
+    expect(borrado?.not).toBe(`("${comida.id}")`);
+  });
+
+  it("si falla el subido no se borra nada (no pierde datos)", async () => {
+    const { cliente, llamadas } = mockSupabase({
+      actualizado: { error: { message: "caído" } },
+    });
+    const comida = crearComida("2026-10-03", buscarAlimento("pan")!, 50);
+    await backendNubeComidas(cliente, "u9").guardar([comida]);
+    expect(llamadas.map((l) => l.operacion)).toEqual(["upsert"]);
   });
 });
 
