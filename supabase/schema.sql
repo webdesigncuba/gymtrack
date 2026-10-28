@@ -48,6 +48,20 @@ create table if not exists perfiles (
   actualizada_en bigint not null
 );
 
+-- Alimentos personalizados ("mis alimentos"): los que el usuario mete a mano
+-- o trae de online para reutilizar. El nombre manda: la app reemplaza el
+-- que tenga el mismo nombre normalizado.
+create table if not exists alimentos_custom (
+  id text primary key,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  nombre text not null,
+  kcal double precision not null,
+  carbos double precision not null,
+  proteinas double precision not null,
+  grasas double precision not null,
+  alias jsonb not null default '[]'
+);
+
 -- Columnas añadidas después: por si la tabla ya existía sin ellas.
 alter table perfiles add column if not exists sexo text;
 alter table perfiles add column if not exists actividad text;
@@ -57,6 +71,7 @@ alter table sesiones enable row level security;
 alter table plantillas enable row level security;
 alter table comidas enable row level security;
 alter table perfiles enable row level security;
+alter table alimentos_custom enable row level security;
 
 -- Una sola política por tabla: todo permitido solo sobre lo propio.
 drop policy if exists "todo lo propio" on sesiones;
@@ -73,4 +88,8 @@ create policy "todo lo propio" on comidas
 
 drop policy if exists "todo lo propio" on perfiles;
 create policy "todo lo propio" on perfiles
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "todo lo propio" on alimentos_custom;
+create policy "todo lo propio" on alimentos_custom
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

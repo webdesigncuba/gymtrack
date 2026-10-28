@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import FormularioSesion from "@/components/FormularioSesion";
 import BalanceCalorico from "@/components/BalanceCalorico";
@@ -27,8 +27,13 @@ import {
   guardarPerfil,
   type BackendPerfil,
 } from "@/lib/perfil";
+import {
+  backendLocalAlimentos,
+  guardarAlimentosCustom,
+  type BackendAlimentos,
+} from "@/lib/alimentosCustom";
 import { almacenLocal, limpiarCacheLocal, type Almacen } from "@/lib/almacen";
-import { almacenNube, backendNubeComidas, backendNubePerfil, backendNubePlantillas } from "@/lib/almacenNube";
+import { almacenNube, backendNubeAlimentos, backendNubeComidas, backendNubePerfil, backendNubePlantillas } from "@/lib/almacenNube";
 import {
   backendLocalPlantillas,
   guardarPlantillas,
@@ -57,6 +62,8 @@ export default function Pagina() {
   const [senalDescanso, setSenalDescanso] = useState(0);
   // Señal para recargar plantillas cuando el respaldo restaura unas nuevas.
   const [senalPlantillas, setSenalPlantillas] = useState(0);
+  // Señal para recargar mis alimentos cuando el respaldo restaura unos nuevos.
+  const [senalAlimentos, setSenalAlimentos] = useState(0);
   // Usuario logueado (null = anónimo, todo en local).
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [cuentaEmail, setCuentaEmail] = useState<string | null>(null);
@@ -66,6 +73,31 @@ export default function Pagina() {
   // Perfil del usuario (uno por cuenta, para uso posterior).
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [cargandoPerfil, setCargandoPerfil] = useState(true);
+  // Aviso flotante (toast) cuando falla el guardado de sesiones.
+  const [avisoGuardado, setAvisoGuardado] = useState("");
+  const avisoTemporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Flags de "cargando" sincronizados. El estado `cargando` se aplica tarde
+  // (React ejecuta todos los efectos del render y luego el setState), así que
+  // al cambiar de backend el efecto de guardar veía el valor viejo (false) y
+  // escribía datos vacíos en la nube. El ref se pone en el efecto de cargar,
+  // que siempre corre antes que el de guardar en el mismo render.
+  const cargandoSesionesRef = useRef(false);
+  const cargandoComidasRef = useRef(false);
+  const cargandoPerfilRef = useRef(false);
+
+  function mostrarAvisoGuardado(mensaje: string): void {
+    setAvisoGuardado(mensaje);
+    // Si ya había un aviso visible, reiniciamos su temporizador.
+    if (avisoTemporizador.current) clearTimeout(avisoTemporizador.current);
+    avisoTemporizador.current = setTimeout(() => setAvisoGuardado(""), 3500);
+  }
+
+  // Limpiamos el temporizador si la página desaparece.
+  useEffect(() => {
+    return () => {
+      if (avisoTemporizador.current) clearTimeout(avisoTemporizador.current);
+    };
+  }, []);
 
   // Almacén activo: nube si hay sesión, local si no.
   const almacen: Almacen = useMemo(() => {
@@ -123,9 +155,26 @@ export default function Pagina() {
     return backendLocalPerfil;
   }, [usuarioId]);
 
+  // Fuente de mis alimentos: con login escribe en la nube y deja copia local
+  // (espejo); sin login usa solo el local.
+  const backendAlimentos: BackendAlimentos = useMemo(() => {
+    if (usuarioId && haySupabase()) {
+      const nube = backendNubeAlimentos(crearClienteSupabase(), usuarioId);
+      return {
+        cargar: nube.cargar,
+        guardar: async (lista) => {
+          await nube.guardar(lista);
+          guardarAlimentosCustom(lista);
+        },
+      };
+    }
+    return backendLocalAlimentos;
+  }, [usuarioId]);
+
   // 1) Al montar o cambiar de almacén, cargamos lo que haya guardado.
   useEffect(() => {
     let vivo = true;
+    cargandoSesionesRef.current = true;
     setCargando(true);
     almacen
       .cargar()
@@ -137,7 +186,10 @@ export default function Pagina() {
         if (vivo) setSesiones([]);
       })
       .finally(() => {
-        if (vivo) setCargando(false);
+        if (vivo) {
+          cargandoSesionesRef.current = false;
+          setCargando(false);
+        }
       });
     return () => {
       vivo = false;
@@ -146,8 +198,10 @@ export default function Pagina() {
 
   // 2) Cada vez que cambian las sesiones, las guardamos en el almacén
   // activo. Con login, además dejamos copia en local (espejo).
+  // El ref evita escribir con datos viejos mientras carga el nuevo almacén
+  // (sin él, entrar tras salir borraba las sesiones de la nube).
   useEffect(() => {
-    if (cargando) return;
+    if (cargandoSesionesRef.current) return;
     almacen
       .guardar(sesiones)
       .then(() => {
@@ -155,6 +209,9 @@ export default function Pagina() {
       })
       .catch((error) => {
         console.warn("No se pudieron guardar las sesiones:", error);
+        mostrarAvisoGuardado(
+          "⚠️ No se pudieron guardar las sesiones. Comprueba tu conexión e inténtalo de nuevo."
+        );
       });
   }, [sesiones, cargando, almacen, usuarioId]);
   // Comidas: se cargan al cambiar de backend y se guardan en cada cambio
@@ -162,6 +219,7 @@ export default function Pagina() {
   // antes de cargar.
   useEffect(() => {
     let vivo = true;
+    cargandoComidasRef.current = true;
     setCargandoComidas(true);
     backendComidas
       .cargar()
@@ -173,7 +231,10 @@ export default function Pagina() {
         if (vivo) setComidas([]);
       })
       .finally(() => {
-        if (vivo) setCargandoComidas(false);
+        if (vivo) {
+          cargandoComidasRef.current = false;
+          setCargandoComidas(false);
+        }
       });
     return () => {
       vivo = false;
@@ -181,7 +242,7 @@ export default function Pagina() {
   }, [backendComidas]);
 
   useEffect(() => {
-    if (cargandoComidas) return;
+    if (cargandoComidasRef.current) return;
     backendComidas.guardar(comidas).catch((error) => {
       console.warn("No se pudieron guardar las comidas:", error);
     });
@@ -189,6 +250,7 @@ export default function Pagina() {
   // Perfil: se carga al cambiar de backend y se guarda en cada cambio.
   useEffect(() => {
     let vivo = true;
+    cargandoPerfilRef.current = true;
     setCargandoPerfil(true);
     backendPerfil
       .cargar()
@@ -200,7 +262,10 @@ export default function Pagina() {
         if (vivo) setPerfil(null);
       })
       .finally(() => {
-        if (vivo) setCargandoPerfil(false);
+        if (vivo) {
+          cargandoPerfilRef.current = false;
+          setCargandoPerfil(false);
+        }
       });
     return () => {
       vivo = false;
@@ -208,7 +273,7 @@ export default function Pagina() {
   }, [backendPerfil]);
 
   useEffect(() => {
-    if (cargandoPerfil) return;
+    if (cargandoPerfilRef.current) return;
     if (perfil === null) return;
     backendPerfil.guardar(perfil).catch((error) => {
       console.warn("No se pudo guardar el perfil:", error);
@@ -422,7 +487,11 @@ export default function Pagina() {
             );
           })()}
 
-          <FormularioDieta onGuardar={guardarComida} />
+          <FormularioDieta
+            onGuardar={guardarComida}
+            backendAlimentos={backendAlimentos}
+            senalAlimentos={senalAlimentos}
+          />
 
           <ListaComidas comidas={comidas} onEliminar={eliminarComida} />
 
@@ -478,8 +547,20 @@ export default function Pagina() {
         perfil={perfil}
         backendPerfil={backendPerfil}
         onImportarPerfil={importarPerfil}
+        backendAlimentos={backendAlimentos}
+        onImportarAlimentos={() => setSenalAlimentos((n) => n + 1)}
       />
       </div>
+
+      {avisoGuardado && (
+        <div
+          className="fixed bottom-6 left-1/2 z-50 w-[min(92vw,480px)] -translate-x-1/2 rounded-xl border border-borde bg-black px-4 py-3 text-[0.9rem] font-semibold text-texto shadow-[0_10px_30px_rgba(0,0,0,0.5)] anim-toast"
+          role="alert"
+          aria-live="assertive"
+        >
+          {avisoGuardado}
+        </div>
+      )}
     </main>
   );
 }
