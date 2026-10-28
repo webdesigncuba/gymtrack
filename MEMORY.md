@@ -2,7 +2,7 @@
 Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no
 aporte.
 ## Estado actual
-- v2.1.0 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta amplia con héroe de kcal y perfil con calorías. Recuperación de clave en `Auth` + página `/actualizar-clave`.
+- v2.1.1 funcionando: portada (`/`), diario en `/diario` con login obligatorio (cada cuenta ve solo lo suyo), racha 🔥, estadísticas, cronómetro, respaldo con dueño, PWA, historial, dieta amplia con héroe de kcal y perfil con calorías. Recuperación de clave en `Auth` + página `/actualizar-clave`.
 - TypeScript estricto (`npx tsc --noEmit` limpio) + Tailwind v4 con tokens en `@theme`; en `globals.css` solo base, animaciones y `[hidden]`.
 - Solo una sesión por día (se edita sin borrar); cada ejercicio lleva sus tandas con reps + peso. Validación con error inline + toast (3,5 s); al guardar bien, toast de éxito en el formulario ("Sesión guardada ✅" / "Cambios guardados ✅") y si falla el guardado real (nube/local) la página muestra un toast de error visible en cualquier pestaña.
 - Datos en localStorage (clave `gymtrack_sesiones`) vía interfaz `Almacen` async.
@@ -42,6 +42,9 @@ aporte.
 - localStorage solo en cliente (`typeof window` + `useEffect` con flag `cargando`).
 - No usar banderas de "primer render" para ignorar efectos con señales: en modo
   estricto (dev) los efectos corren dos veces; comparar valor anterior vs actual.
+- Bandera de carga en estado no sirve al cambiar de backend (React aplica setState
+  después de los efectos): los guards de guardar usan ref sincronizado y en la
+  nube se sube primero y se borra lo sobrante después (parche 2.1.1).
 - Cada vez que implementes algo por el comando /feature te dejo a tu entender subir o no la version.
 ## Próximos pasos
 - v2 abierta en 2.0.0 (dieta amplia + online). Aparcado para 2.2.0: PWA offline real (service worker con caché).

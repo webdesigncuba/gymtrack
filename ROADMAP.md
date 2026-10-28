@@ -58,5 +58,6 @@ Pasada de seguridad del cierre: RLS "todo lo propio" en las 4 tablas, sin
 - [x] Dieta amplia + online (2026-10-05): base de ~140 alimentos con alias, "mis alimentos" reutilizables (clave `gymtrack_alimentos_custom` + tabla `alimentos_custom` RLS + respaldo v4) y búsqueda online bajo demanda en Open Food Facts (lo elegido queda en caché, aviso de privacidad, fallback offline).
 
 ## Versión 2.1 — Pendiente
+- [x] Parche 2.1.1 (2026-10-27): carrera al salir y volver a entrar que borraba sesiones/comidas de la nube (guard de carga con ref sincronizado en `app/diario/page.tsx` + guardado "subir primero y borrar lo sobrante después" en `lib/almacenNube.ts`).
 - [ ] PWA offline real: service worker propio (sin dependencias) con caché del shell + fallback sin conexión.
 

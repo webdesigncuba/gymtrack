@@ -10,6 +10,40 @@ import type { Alimento, Comida, Perfil, Sesion } from "@/lib/tipos";
 // Estrategia simple y predecible: guardar reemplaza todas las sesiones del
 // usuario (igual que la restauración del respaldo).
 
+/**
+ * Guardado seguro que reemplaza el contenido de una tabla: primero sube lo
+ * nuevo (upsert) y después borra lo que sobra. Así, si la red falla a mitad,
+ * nunca se pierden datos (con "borrar y luego insertar" un fallo en el
+ * insert dejaba la tabla vacía).
+ */
+async function guardarReemplazando(
+  supabase: SupabaseClient,
+  tabla: string,
+  userId: string,
+  filas: Record<string, unknown>[],
+  idsNuevos: string[]
+): Promise<void> {
+  if (filas.length > 0) {
+    const subido = await supabase.from(tabla).upsert(filas);
+    if (subido.error) {
+      console.warn(`No se pudo guardar en la tabla ${tabla}:`, subido.error);
+      return;
+    }
+  }
+  // Lo que sobra: filas del usuario cuyo id no está en la lista nueva.
+  // Los ids de texto van entrecomillados y con `"` escapada, como espera
+  // PostgREST en las listas.
+  let consulta = supabase.from(tabla).delete();
+  if (idsNuevos.length > 0) {
+    const lista = `(${idsNuevos.map((id) => `"${id.replace(/"/g, '""')}"`).join(",")})`;
+    consulta = consulta.not("id", "in", lista);
+  }
+  const borrado = await consulta.eq("user_id", userId);
+  if (borrado.error) {
+    console.warn(`No se pudieron borrar filas sobrantes de ${tabla}:`, borrado.error);
+  }
+}
+
 /** Fila de la tabla `sesiones` tal como la devuelve Supabase. */
 interface FilaSesion {
   id: unknown;
@@ -71,12 +105,6 @@ export function almacenNube(
       return sesiones;
     },
     guardar: async (sesiones: Sesion[]) => {
-      const borrado = await supabase.from("sesiones").delete().eq("user_id", userId);
-      if (borrado.error) {
-        console.warn("No se pudieron guardar las sesiones en la nube:", borrado.error);
-        return;
-      }
-      if (sesiones.length === 0) return;
       const filas = sesiones.map((s) => ({
         id: s.id,
         user_id: userId,
@@ -84,10 +112,13 @@ export function almacenNube(
         creada_en: s.creadaEn,
         ejercicios: s.ejercicios,
       }));
-      const insertado = await supabase.from("sesiones").insert(filas);
-      if (insertado.error) {
-        console.warn("No se pudieron guardar las sesiones en la nube:", insertado.error);
-      }
+      await guardarReemplazando(
+        supabase,
+        "sesiones",
+        userId,
+        filas,
+        sesiones.map((s) => s.id)
+      );
     },
   };
 }
@@ -138,12 +169,6 @@ export function backendNubePlantillas(
       return plantillas;
     },
     guardar: async (plantillas: Plantilla[]) => {
-      const borrado = await supabase.from("plantillas").delete().eq("user_id", userId);
-      if (borrado.error) {
-        console.warn("No se pudieron guardar las plantillas en la nube:", borrado.error);
-        return;
-      }
-      if (plantillas.length === 0) return;
       const filas = plantillas.map((p) => ({
         id: p.id,
         user_id: userId,
@@ -151,10 +176,13 @@ export function backendNubePlantillas(
         creada_en: p.creadaEn,
         ejercicios: p.ejercicios,
       }));
-      const insertado = await supabase.from("plantillas").insert(filas);
-      if (insertado.error) {
-        console.warn("No se pudieron guardar las plantillas en la nube:", insertado.error);
-      }
+      await guardarReemplazando(
+        supabase,
+        "plantillas",
+        userId,
+        filas,
+        plantillas.map((p) => p.id)
+      );
     },
   };
 }
@@ -211,12 +239,6 @@ export function backendNubeComidas(
       return comidas;
     },
     guardar: async (comidas: Comida[]) => {
-      const borrado = await supabase.from("comidas").delete().eq("user_id", userId);
-      if (borrado.error) {
-        console.warn("No se pudieron guardar las comidas en la nube:", borrado.error);
-        return;
-      }
-      if (comidas.length === 0) return;
       const filas = comidas.map((c) => ({
         id: c.id,
         user_id: userId,
@@ -229,10 +251,13 @@ export function backendNubeComidas(
         grasas: c.grasas,
         creada_en: c.creadaEn,
       }));
-      const insertado = await supabase.from("comidas").insert(filas);
-      if (insertado.error) {
-        console.warn("No se pudieron guardar las comidas en la nube:", insertado.error);
-      }
+      await guardarReemplazando(
+        supabase,
+        "comidas",
+        userId,
+        filas,
+        comidas.map((c) => c.id)
+      );
     },
   };
 }
@@ -290,12 +315,6 @@ export function backendNubeAlimentos(
       return alimentos;
     },
     guardar: async (alimentos: Alimento[]) => {
-      const borrado = await supabase.from("alimentos_custom").delete().eq("user_id", userId);
-      if (borrado.error) {
-        console.warn("No se pudieron guardar los alimentos en la nube:", borrado.error);
-        return;
-      }
-      if (alimentos.length === 0) return;
       const filas = alimentos.map((a) => ({
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7) + "-" + a.nombre.slice(0, 12),
         user_id: userId,
@@ -306,10 +325,15 @@ export function backendNubeAlimentos(
         grasas: a.grasas,
         alias: a.alias ?? [],
       }));
-      const insertado = await supabase.from("alimentos_custom").insert(filas);
-      if (insertado.error) {
-        console.warn("No se pudieron guardar los alimentos en la nube:", insertado.error);
-      }
+      // Ojo: el id se genera al subir (los alimentos no lo traen), así que
+      // para borrar "lo que sobra" usamos los ids que acaban de crearse.
+      await guardarReemplazando(
+        supabase,
+        "alimentos_custom",
+        userId,
+        filas,
+        filas.map((f) => String(f.id))
+      );
     },
   };
 }
